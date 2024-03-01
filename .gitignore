@@ -1,0 +1,10 @@
+.env
+venv
+app/migrations/versions/*
+!app/migrations/versions/__init__.py
+.idea
+*.log
+media/*
+!media/__init__.py
+__pycache__
+

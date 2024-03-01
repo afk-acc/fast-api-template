@@ -1,0 +1,21 @@
+#!/bin/bash
+NAME=project name
+DIR=/project_path
+USER=root
+WORKERS=3
+WORKER_CLASS=uvicorn.workers.UvicornWorker
+VENV=venv/bin/activate
+BIND=unix:$DIR/run/gunicorn.sock
+LOG_LEVEL=error
+source $DIR/venv/bin/activate
+cd $DIR
+
+exec $DIR/venv/bin/gunicorn app.main:app \
+  --bind 0.0.0.0:8000 \
+  --name $NAME \
+  --workers $WORKERS \
+  --worker-class $WORKER_CLASS \
+  --user=$USER \
+  --bind=$BIND \
+  --log-level=$LOG_LEVEL \
+  --log-file=$DIR/gunicorn_log.log
