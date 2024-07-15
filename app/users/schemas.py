@@ -1,17 +1,10 @@
-import asyncio
 import datetime
-from typing import Union, List
+from typing import List
 
-from asgiref.sync import async_to_sync
 from fastapi import UploadFile
-from pydantic import BaseModel, create_model
-from pydantic.v1 import EmailStr
+from pydantic import BaseModel
 
-from app.users.generated_models import SLanguage
-
-
-class BaseLocale(BaseModel):
-    names: SLanguage
+from app.repository.schemas import BaseLocale
 
 
 class SPermission(BaseLocale):
