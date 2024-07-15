@@ -2,11 +2,9 @@ import os
 import shutil
 
 
-from fastapi import APIRouter, Response, Depends, UploadFile, Form
 from secrets import token_hex
 
 from slugify import slugify
-
 from app.exceptions import UserAlreadyExistsException, IncorrectEmailOrPassword
 from app.users.auth import (
     get_hashed_password,
@@ -16,7 +14,8 @@ from app.users.auth import (
 )
 from app.users.dependencies import get_current_user
 from app.users.models import User, Role
-from app.users.schemas import SUserAuth,  SCurrentUser, SUserRegister
+from app.users.schemas import SUserAuth, SCurrentUser, SUserRegister, SPUserAuth
+from fastapi import APIRouter, Response, Depends, UploadFile, Form
 
 router = APIRouter(prefix="/auth", tags=["Авторизация"])
 
@@ -36,7 +35,7 @@ async def register_user(user_data: SUserRegister, response: Response):
 
 
 @router.post("/login")
-async def login(response: Response, user_data: SUserAuth):
+async def login(response: Response, user_data: SUserAuth)->SPUserAuth:
     user = await authenticate_user(user_data.email, user_data.password)
     if not user:
         raise IncorrectEmailOrPassword

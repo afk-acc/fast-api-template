@@ -33,8 +33,10 @@ async def get_current_user(token: str = Depends(get_token)):
     if not user_id:
         raise UserIsNotPresentException
     user = await User.find_by_id(int(user_id))
+
     if not user:
         raise UserIsNotPresentException
+    await User.update(model_id=user.id, last_login=datetime.utcnow())
     return user
 
 
@@ -44,4 +46,3 @@ async def get_admin(
     if user.role.name != 'admin':
         raise UserIsNotAdminException
     return user
-
