@@ -47,16 +47,3 @@ async def unblock_user(user_id: int, page: int = 1, limit: int = 15, user: User 
     return await get_list_data(User, page, limit)
 
 
-@router.post('/restart/server')
-@has_perm('all')
-async def restart_server(user=Depends(get_current_user)):
-    import subprocess
-    try:
-        # result = subprocess.run(['mkdir', 'tmepa'], check=True,
-        #                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        result = subprocess.run(['supervisorctl', 'restart', 'api-tripzone'], check=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(result.stdout.decode())
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred: {e.stderr.decode()}")
-    return {'status': 200}
