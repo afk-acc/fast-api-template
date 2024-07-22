@@ -1,6 +1,5 @@
 from sqladmin import ModelView
 
-from app.tasks.models import Tasks
 from app.users.models import User
 
 
@@ -16,10 +15,3 @@ from app.users.models import User
 #
 
 
-class TasksAdmin(ModelView, model=Tasks):
-    column_list = [Tasks.task_id]
-    column_labels = {'task_id':"ID задачи"}
-    name = 'Задача'
-    name_plural = "Задачи"
-    column_sortable_list = [Tasks.task_id]
-    column_searchable_list = [Tasks.task_id]

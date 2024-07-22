@@ -8,7 +8,7 @@ from app.config import settings
 from app.exceptions import (
     TokenExpiredException,
     IncorrectTokenException,
-    UserIsNotPresentException, UserIsNotAdminException
+    UserIsNotPresentException, UserIsNotAdminException, NotPermissionException
 )
 
 
@@ -46,3 +46,25 @@ async def get_admin(
     if user.role.name != 'admin':
         raise UserIsNotAdminException
     return user
+
+
+from functools import wraps
+
+
+def has_perm(permission: str):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            user = kwargs['user']
+            permissions_list = set(map(lambda x: x.strip(), permission.split(',')))
+            user_permission = set(map(lambda x: x.system_name, user.role.permissions))
+            print(user.email)
+            print(permissions_list)
+            print(user_permission)
+            if len(user_permission.intersection(permissions_list)) == 0:
+                raise NotPermissionException
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

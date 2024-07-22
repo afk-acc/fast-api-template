@@ -52,7 +52,7 @@ def update_env_py(module_name):
 def update_main_py(module_name):
     main_py_path = os.path.join('app', 'main.py')
     with open(main_py_path, 'a') as main_py:
-        main_py.write(f"from {module_name}.router import router as router_{module_name}\n")
+        main_py.write(f"from app.{module_name}.router import router as router_{module_name}\n")
         main_py.write(f"app.include_router(router_{module_name})\n")
 
 

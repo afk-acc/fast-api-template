@@ -6,6 +6,7 @@ from app.exceptions import ModelNotFoundException
 from sqlalchemy.orm import DeclarativeBase, declared_attr
 from sqlalchemy import Column, Integer
 
+
 class BaseRepository:
     @classmethod
     async def get_all(cls, filter=None):
@@ -120,6 +121,12 @@ class BaseRepository:
         async with async_session_maker() as session:
             query = delete(cls).filter(filter)
             await session.execute(query)
+            await session.commit()
+
+    @classmethod
+    async def insert(cls, data: list):
+        async with async_session_maker() as session:
+            session.add_all(data)
             await session.commit()
 
 

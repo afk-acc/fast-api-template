@@ -25,3 +25,6 @@ RoomCannotBeBooked = HTTPException(
 ModelNotFoundException = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND, detail="Запись не найдена"
 )
+NotPermissionException = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN, detail="Нет соответствующего разрешения для выполнения этого действия"
+)

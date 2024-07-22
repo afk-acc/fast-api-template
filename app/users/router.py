@@ -26,7 +26,7 @@ async def register_user(user_data: SUserRegister, response: Response):
     if existing_user:
         raise UserAlreadyExistsException
     hashed_password = get_hashed_password(user_data.password)
-    role = await Role.find_one_or_fail(Role.name == 'user')
+    role = await Role.find_one_or_fail(Role.system_name == 'user')
     user = await User.create(email=user_data.email,
                                  hashed_password=hashed_password, role_id=role.id)
     access_token = create_access_token({"sub": str(user.id)})

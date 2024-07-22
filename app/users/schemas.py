@@ -4,12 +4,14 @@ from typing import List
 from fastapi import UploadFile
 from pydantic import BaseModel
 
+from app.repository.generated_models import SLanguage
 from app.repository.schemas import BaseLocale
 
 
 class SPermission(BaseLocale):
     id: int
     system_name: str
+    names: SLanguage
 
 
 class SRole(BaseLocale):

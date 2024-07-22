@@ -1,5 +1,6 @@
 from pydantic import create_model
 
+from app.exceptions import ModelNotFoundException
 from app.repository.base import Base
 from app.database import async_session_maker
 from sqlalchemy import Column, String, DateTime, ForeignKey, select, JSON, func, Boolean, UniqueConstraint, insert
@@ -21,7 +22,36 @@ class Role(Base):
     users = relationship("User", back_populates="role")
     permissions = relationship('Permission', secondary='rolepermissions', back_populates='roles')
     system_role = Column(Boolean, nullable=False, default=False)
-    system_name = Column(String, nullable=False)
+    system_name = Column(String, nullable=True)
+    @classmethod
+    async def find_by_id_or_fail(cls, model_id: int):
+        async with async_session_maker() as session:
+            query = select(cls).filter_by(id=model_id).options(joinedload(cls.permissions))
+            result = await session.execute(query)
+            result = result.unique().scalar_one_or_none()
+            if result is None:
+                raise ModelNotFoundException
+            return result
+    @classmethod
+    async def paginate(cls, page: int, limit: int, filter=None):
+        async with async_session_maker() as session:
+            if filter is not None:
+                query = select(cls).filter(filter).limit(limit).offset((page - 1) * limit).options(joinedload(
+                    cls.permissions))
+            else:
+                query = select(cls).limit(limit).offset((page - 1) * limit).options(joinedload(
+                    cls.permissions))
+            result = await session.execute(query)
+            return result.unique().scalars().all()
+    @classmethod
+    async def get_all(cls, filter=None):
+        async with async_session_maker() as session:
+            if filter is not None:
+                query = select(cls).filter(filter).options(joinedload(cls.permissions))
+            else:
+                query = select(cls).options(joinedload(cls.permissions))
+            result = await session.execute(query)
+            return result.scalars().all()
 
     def __str__(self):
         return f"{self.names.get('ru')}"
@@ -50,6 +80,15 @@ class User(Base):
         return f"{self.email}"
 
     @classmethod
+    async def find_by_id_or_fail(cls, model_id: int):
+        async with async_session_maker() as session:
+            query = select(cls).filter_by(id=model_id).options(joinedload(cls.role).options(joinedload(Role.permissions)))
+            result = await session.execute(query)
+            result = result.unique().scalar_one_or_none()
+            if result is None:
+                raise ModelNotFoundException
+            return result
+    @classmethod
     async def find_one_or_none(cls, filter):
         async with async_session_maker() as session:
             query = select(cls).options(joinedload(cls.role).options(joinedload(Role.permissions))).filter(filter)
@@ -71,17 +110,17 @@ class User(Base):
         async with async_session_maker() as session:
             if filter is not None:
                 query = select(cls).filter(filter).limit(limit).offset((page - 1) * limit).options(joinedload(
-                    cls.role))
+                    cls.role).joinedload(Role.permissions))
             else:
                 query = select(cls).limit(limit).offset((page - 1) * limit).options(joinedload(
-                    cls.role))
+                    cls.role).joinedload(Role.permissions))
             result = await session.execute(query)
-            return result.scalars().all()
+            return result.unique().scalars().all()
 
     @classmethod
     async def find_by_id(cls, model_id: int):
         async with (async_session_maker() as session):
-            query = select(cls).filter_by(id=model_id).options(joinedload(cls.role))
+            query = select(cls).filter_by(id=model_id).options(joinedload(cls.role).options(joinedload(Role.permissions)))
             result = await session.execute(query)
             result = result.unique().scalar()
             return result
