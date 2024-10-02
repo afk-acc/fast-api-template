@@ -1,32 +1,60 @@
-from sqlalchemy import select, insert, delete, func
+from typing import Optional, List
+
+from sqlalchemy import select, insert, delete, func, case, update, inspect
 import inflect
 
 from app.database import async_session_maker
 from app.exceptions import ModelNotFoundException
-from sqlalchemy.orm import DeclarativeBase, declared_attr
+from sqlalchemy.orm import DeclarativeBase, declared_attr, joinedload
 from sqlalchemy import Column, Integer
 
 
 class BaseRepository:
     @classmethod
-    async def get_all(cls, filter=None):
-        async with async_session_maker() as session:
-            if filter is not None:
-                query = select(cls).filter(filter)
-            else:
-                query = select(cls)
-            result = await session.execute(query)
-            return result.scalars().all()
+    def build_joinedload(cls, include: str):
+        parts = include.split('.')
+        option = joinedload(getattr(cls, parts[0]))
+        current_class = cls
+        for part in parts[1:]:
+            current_class = getattr(current_class, parts[0]).property.mapper.class_
+            option = option.joinedload(getattr(current_class, part))
+        return option
 
     @classmethod
-    async def paginate(cls, page: int, limit: int, filter=None):
+    async def find_one_or_none_with(cls, filter, includes: List[str] = None):
         async with async_session_maker() as session:
-            if filter is not None:
-                query = select(cls).filter(filter).limit(limit).offset((page - 1) * limit)
-            else:
-                query = select(cls).limit(limit).offset((page - 1) * limit)
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            query = query.filter(filter)
+
             result = await session.execute(query)
-            return result.scalars().all()
+            return result.unique().scalar_one_or_none()
+
+    @classmethod
+    async def get_all(cls, filter=None, includes: List[str] = None):
+        async with async_session_maker() as session:
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            if filter is not None:
+                query = query.filter(filter)
+            result = await session.execute(query)
+            return result.unique().scalars().all()
+
+    @classmethod
+    async def paginate(cls, page: int, limit: int, filter=None, includes: List[str] = None):
+        async with async_session_maker() as session:
+            query = select(cls).limit(limit).offset((page - 1) * limit)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            if filter is not None:
+                query = query.filter(filter)
+            result = await session.execute(query)
+            return result.unique().scalars().all()
 
     @classmethod
     async def count(cls, filter=None):
@@ -39,55 +67,82 @@ class BaseRepository:
             return result.scalar()
 
     @classmethod
-    async def find_one_or_none(cls, filter):
+    async def find_one_or_none(cls, filter, includes: List[str] = None):
         async with async_session_maker() as session:
-            query = select(cls).filter(filter)
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            query = query.filter(filter)
             result = await session.execute(query)
-            return result.scalar_one_or_none()
+            return result.unique().scalar_one_or_none()
 
     @classmethod
-    async def find_one_or_fail(cls, filter):
+    async def find_one_or_fail(cls, filter, includes: List[str] = None):
         async with async_session_maker() as session:
-            query = select(cls).filter(filter)
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            query = query.filter(filter)
             result = await session.execute(query)
-            result = result.scalar_one_or_none()
+            result = result.unique().scalar_one_or_none()
             if result is None:
                 raise ModelNotFoundException
             return result
 
     @classmethod
-    async def find_by_id(cls, model_id: int):
+    async def find_by_id(cls, model_id: int, includes: List[str] = None):
         async with async_session_maker() as session:
-            query = select(cls).filter_by(id=model_id)
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            query = query.filter_by(id=model_id)
             result = await session.execute(query)
-            return result.scalar_one_or_none()
+            return result.unique().scalar_one_or_none()
 
     @classmethod
-    async def find_by_id_or_fail(cls, model_id: int):
+    async def find_by_id_or_fail(cls, model_id: int, includes: List[str] = None):
         async with async_session_maker() as session:
-            query = select(cls).filter_by(id=model_id)
+            query = select(cls)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
+            query = query.filter_by(id=model_id)
             result = await session.execute(query)
-            result = result.scalar_one_or_none()
+            result = result.unique().scalar_one_or_none()
             if result is None:
                 raise ModelNotFoundException
             return result
 
     @classmethod
-    async def create(cls, **data):
+    async def create(cls, includes: List[str] = None, **data):
         async with async_session_maker() as session:
-            query = insert(cls).values(**data).returning(cls)
+
+
+            query = insert(cls).values(**data)
             res = await session.execute(query)
             await session.commit()
-            return res.scalar()
+            last_id = res.lastrowid
+            select_query = select(cls).where(cls.id == last_id)
+            if includes:
+                for include in includes:
+                    select_query = select_query.options(cls.build_joinedload(include))
+            result = await session.execute(select_query)
+            return result.unique().scalar()
 
     @classmethod
-    async def first_or_create(cls, filter, **data):
+    async def first_or_create(cls, filter, includes: List[str] = None, **data):
         async with async_session_maker() as session:
             query = select(cls).filter(filter)
+            if includes:
+                for include in includes:
+                    query = query.options(cls.build_joinedload(include))
             result = await session.execute(query)
-            result = result.scalar_one_or_none()
+            result = result.unique().scalar_one_or_none()
             if not result:
-                result = await cls.create(**data)
+                result = await cls.create(includes=includes, **data)
             return result
 
     @classmethod
@@ -96,10 +151,10 @@ class BaseRepository:
             query = select(cls).filter_by(id=model_id)
             result = await session.execute(query)
             result = result.scalar_one_or_none()
-            for key, value in data.items():
-                setattr(result, key, value) if value else None
             if not result:
                 raise ModelNotFoundException
+            for key, value in data.items():
+                setattr(result, key, value)
             await session.commit()
             return result
 
@@ -127,6 +182,34 @@ class BaseRepository:
     async def insert(cls, data: list):
         async with async_session_maker() as session:
             session.add_all(data)
+            await session.commit()
+
+    @classmethod
+    async def bulk_update_records(cls, records):
+        async with async_session_maker() as session:
+            mapper = inspect(cls)
+            update_cases = dict()
+            # print(dir(mapper))
+            # print(mapper.tables)
+            # print(mapper.c)
+            for record in records:
+                for attr in mapper.c:
+                    # print(attr.name)
+                    # print(dir(attr))
+                    # print(dir(attr.key))
+                    # print(attr.key)
+                    if attr.name != 'id':
+                        if attr.name in record:
+                            print('1')
+                            update_cases[attr.name] = case(
+                                (cls.id == record['id'],
+                                 dict(record[attr.name]) if attr.name in ['texts', 'names', 'options'] else record[
+                                     attr.name])
+                            )
+
+            query = update(cls).values(update_cases).where(cls.id.in_([record['id'] for record in records]))
+            print(query)
+            await session.execute(query)
             await session.commit()
 
 
