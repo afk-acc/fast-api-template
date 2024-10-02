@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from sqlalchemy import select, insert, delete, func, case, update, inspect
+from sqlalchemy import select, insert, delete, func, case, update, inspect, Case
 import inflect
 
 from app.database import async_session_maker
@@ -15,10 +15,20 @@ class BaseRepository:
         parts = include.split('.')
         option = joinedload(getattr(cls, parts[0]))
         current_class = cls
-        for part in parts[1:]:
-            current_class = getattr(current_class, parts[0]).property.mapper.class_
-            option = option.joinedload(getattr(current_class, part))
+        for i in range(len(parts)-1):
+            current_class = getattr(current_class, parts[i]).property.mapper.class_
+            option = option.joinedload(getattr(current_class, parts[i+1]))
         return option
+
+    # @classmethod
+    # def build_joinedload(cls, include: str):
+    #     parts = include.split('.')
+    #     option = joinedload(getattr(cls, parts[0]))
+    #     current_class = cls
+    #     for part in parts[1:]:
+    #         current_class = getattr(current_class, parts[0]).property.mapper.class_
+    #         option = option.joinedload(getattr(current_class, part))
+    #     return option
 
     @classmethod
     async def find_one_or_none_with(cls, filter, includes: List[str] = None):
@@ -164,10 +174,10 @@ class BaseRepository:
             query = select(cls).filter(filter)
             result = await session.execute(query)
             result = result.scalar_one_or_none()
-            for key, value in data.items():
-                setattr(result, key, value) if value else None
             if not result:
                 raise ModelNotFoundException
+            for key, value in data.items():
+                setattr(result, key, value)
             await session.commit()
             return result
 
@@ -187,29 +197,31 @@ class BaseRepository:
     @classmethod
     async def bulk_update_records(cls, records):
         async with async_session_maker() as session:
-            mapper = inspect(cls)
-            update_cases = dict()
+            # mapper = inspect(cls)
+            # update_cases = dict()
             # print(dir(mapper))
             # print(mapper.tables)
             # print(mapper.c)
-            for record in records:
-                for attr in mapper.c:
-                    # print(attr.name)
-                    # print(dir(attr))
-                    # print(dir(attr.key))
-                    # print(attr.key)
-                    if attr.name != 'id':
-                        if attr.name in record:
-                            print('1')
-                            update_cases[attr.name] = case(
-                                (cls.id == record['id'],
-                                 dict(record[attr.name]) if attr.name in ['texts', 'names', 'options'] else record[
-                                     attr.name])
-                            )
+            # for record in records:
+            #     for attr in mapper.c:
+            #         # print(attr.name)
+            #         # print(dir(attr))
+            #         # print(dir(attr.key))
+            #         # print(attr.key)
+            #         if attr.name != 'id':
+            #             if attr.name in record:
+            #                 update_cases[attr.name] = case(
+            #                     (cls.id == record['id'],
+            #                      dict(record[attr.name]) if attr.name in ['texts', 'names', 'options']
+            #                                              else record[attr.name])
+            #                 )
 
-            query = update(cls).values(update_cases).where(cls.id.in_([record['id'] for record in records]))
-            print(query)
-            await session.execute(query)
+            ### так не пойдет, т.к. values может обновлять записи только одинаковыми значениями.
+            # query = update(cls).values(update_cases).where(cls.id.in_([record['id'] for record in records]))
+            # print(query)
+            # await session.execute(query)
+
+            await session.execute(update(cls), records)
             await session.commit()
 
 
