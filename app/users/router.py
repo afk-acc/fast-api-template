@@ -6,7 +6,6 @@ from typing import List
 
 from slugify import slugify
 from app.exceptions import UserAlreadyExistsException, IncorrectEmailOrPassword
-from app.lawyer.models import LawyerRequest
 from app.repository.tools import get_list_data
 from app.users.auth import (
     get_hashed_password,
