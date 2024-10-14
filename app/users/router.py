@@ -30,7 +30,7 @@ async def register_user(user_data: SUserRegister, response: Response):
     role = await Role.find_one_or_fail(Role.system_name == 'user')
     user = await User.create(email=user_data.email,
                              hashed_password=hashed_password, role_id=role.id,
-                             includes=['role', 'role.permissions', 'lawyer'])
+                             includes=['role', 'role.permissions'])
     access_token = create_access_token({"sub": str(user.id)})
     response.set_cookie("access_token", access_token, httponly=True)
     return {"status": 201, "detail": "register is successful", 'access_token': access_token, 'user': user}
