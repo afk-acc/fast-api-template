@@ -44,11 +44,6 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True)
 
-
-    @property
-    def all_chats(self):
-        return self.chats_user_1 + self.chats_user_2
-
     def __str__(self):
         return f"{self.email}"
 
