@@ -134,8 +134,12 @@ class BaseRepository:
             query = insert(cls).values(**data)
             res = await session.execute(query)
             await session.commit()
-            # res = res.scalar() # Для Postgres
+
+            # For Postgres
+            # res = res.scalar() 
             # last_id = res.id
+
+            # For MySQL
             last_id = res.lastrowid
             select_query = select(cls).where(cls.id == last_id)
             if includes:
