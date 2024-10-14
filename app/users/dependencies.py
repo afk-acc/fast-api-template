@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from starlette.websockets import WebSocket
+
 from app.users.models import User
 from fastapi import Request, Depends
 from jose import jwt, JWTError
@@ -12,7 +14,7 @@ from app.exceptions import (
 )
 
 
-def get_token(request: Request):
+def get_token(request: Request = None):
     token = request.cookies.get("access_token")
     if not token:
         token = request.headers.get("Authorization")
@@ -32,18 +34,20 @@ async def get_current_user(token: str = Depends(get_token)):
     user_id: str = payload.get("sub")
     if not user_id:
         raise UserIsNotPresentException
-    user = await User.find_by_id(int(user_id))
+    user = await User.find_by_id(int(user_id), includes=['role', 'role.permissions', 'lawyer'])
 
     if not user:
         raise UserIsNotPresentException
     await User.update(model_id=user.id, last_login=datetime.utcnow())
+
     return user
 
 
 async def get_admin(
         user=Depends(get_current_user),
 ):
-    if user.role.name != 'admin':
+
+    if user.role.system_name != 'admin':
         raise UserIsNotAdminException
     return user
 
@@ -58,9 +62,6 @@ def has_perm(permission: str):
             user = kwargs['user']
             permissions_list = set(map(lambda x: x.strip(), permission.split(',')))
             user_permission = set(map(lambda x: x.system_name, user.role.permissions))
-            print(user.email)
-            print(permissions_list)
-            print(user_permission)
             if len(user_permission.intersection(permissions_list)) == 0:
                 raise NotPermissionException
             return await func(*args, **kwargs)
@@ -68,3 +69,5 @@ def has_perm(permission: str):
         return wrapper
 
     return decorator
+
+

@@ -1,9 +1,8 @@
 import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import UploadFile
 from pydantic import BaseModel
-
 from app.repository.generated_models import SLanguage
 from app.repository.schemas import BaseLocale
 
@@ -16,7 +15,16 @@ class SPermission(BaseLocale):
 
 class SRole(BaseLocale):
     id: int
+    names: SLanguage
+    system_name: str
+
+class SPRole(SRole):
     permissions: List[SPermission]
+
+class SUUser(BaseModel):
+    lastname: str | None
+    name: str | None
+    patronymic: str | None
 
 
 class SCurrentUser(BaseModel):
@@ -29,7 +37,7 @@ class SCurrentUser(BaseModel):
     last_login: datetime.datetime | None
     created_at: datetime.datetime
     is_active: bool
-    role: SRole
+    role: SPRole
 
     class Config:
         from_attributes = True
@@ -50,8 +58,11 @@ class SUserUpdate(BaseModel):
 class SUser(BaseModel):
     id: int
     email: str
-    avatar: str
-
+    # avatar: Optional[str]
+    lastname: Optional[str]
+    name: Optional[str]
+    patronymic: Optional[str]
+    role: SRole
 
 class SPUserAuth(BaseModel):
     access_token: str
@@ -61,3 +72,5 @@ class SPUserAuth(BaseModel):
 class SUserRegister(BaseModel):
     email: str
     password: str
+
+
