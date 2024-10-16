@@ -10,7 +10,7 @@ DB_HOST = settings.DB_HOST
 DB_PORT = settings.DB_PORT
 DB_NAME = settings.DB_NAME
 
-# DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}" # Also need to switch in app/repository/base.py at line 138
 DATABASE_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_async_engine(DATABASE_URL)
 
