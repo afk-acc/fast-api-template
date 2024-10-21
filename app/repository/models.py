@@ -11,7 +11,7 @@ class Language(Base):
     name: Mapped[str]
 
     @classmethod
-    async def create(cls, **data):
+    async def create(cls, includes:list, **data):
         async with async_session_maker() as session:
             query = insert(cls).values(**data).returning(cls)
             res = await session.execute(query)

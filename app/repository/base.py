@@ -129,18 +129,16 @@ class BaseRepository:
     @classmethod
     async def create(cls, includes: List[str] = None, **data):
         async with async_session_maker() as session:
-
-
-            query = insert(cls).values(**data)
+            query = insert(cls).values(**data).returning(cls)
             res = await session.execute(query)
             await session.commit()
 
             # For Postgres
-            # res = res.scalar() 
-            # last_id = res.id
+            res = res.scalar()
+            last_id = res.id
 
             # For MySQL
-            last_id = res.lastrowid
+            # last_id = res.lastrowid
             select_query = select(cls).where(cls.id == last_id)
             if includes:
                 for include in includes:
